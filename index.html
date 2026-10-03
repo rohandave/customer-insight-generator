@@ -1,0 +1,408 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Customer Insight Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: input rail on the left, findings report on the right; stacks to one column on phones. */
+:root{
+  --bg:#F4F6F3; --surface:#FFFFFF; --ink:#14201C; --muted:#5A6862; --line:#D9DFDA;
+  --accent:#0E6B5B; --accent-ink:#FFFFFF; --accent-soft:#DDEFE9;
+  --good:#1E7A45; --warn:#9A5A00; --bad:#B3261E; --neutral:#7C8883;
+  --good-soft:#DDF0E3; --warn-soft:#F8E9CC; --bad-soft:#F7DAD7;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1513; --surface:#161F1B; --ink:#E4ECE8; --muted:#98A6A0; --line:#26332D;
+    --accent:#52C7AC; --accent-ink:#07201A; --accent-soft:#1B3A31;
+    --good:#5FCB8A; --warn:#E0A44A; --bad:#F08A80; --neutral:#7F8C86;
+    --good-soft:#1A3526; --warn-soft:#3A2D14; --bad-soft:#3D1F1C;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1513; --surface:#161F1B; --ink:#E4ECE8; --muted:#98A6A0; --line:#26332D;
+  --accent:#52C7AC; --accent-ink:#07201A; --accent-soft:#1B3A31;
+  --good:#5FCB8A; --warn:#E0A44A; --bad:#F08A80; --neutral:#7F8C86;
+  --good-soft:#1A3526; --warn-soft:#3A2D14; --bad-soft:#3D1F1C;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:24px 56px}
+.wrap{max-width:1180px;margin-inline:auto;display:flex;flex-direction:column;gap:24px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(1.7rem,4vw,2.3rem);line-height:1.1;margin:0;letter-spacing:-0.01em;text-wrap:balance}
+header p{margin:0;color:var(--muted);max-width:62ch}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start}
+@media (min-width:900px){.layout{grid-template-columns:minmax(0,370px) minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+label,.eyebrow{font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+textarea{font-family:var(--mono);font-size:13px;line-height:1.5;min-height:340px;resize:vertical}
+input[type=text]:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.field{display:flex;flex-direction:column;gap:6px}
+.meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.tag{font-family:var(--mono);font-size:12px;background:var(--warn-soft);color:var(--warn);border-radius:4px;padding:1px 6px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-weight:500;border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.55;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.primary:hover:not(:disabled){filter:brightness(1.07)}
+button.quiet{border-color:transparent;background:transparent;color:var(--muted);padding-inline:8px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.note.err{color:var(--bad)}
+/* report */
+.report{display:flex;flex-direction:column;gap:28px;min-width:0}
+.report-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.engine{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.strip div{padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0;border-left:1px solid var(--line)}
+.strip div:first-child{border-left:0}
+.strip b{font-family:var(--display);font-size:1.7rem;line-height:1.1;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.strip span{font-size:12px;color:var(--muted)}
+.summary{font-size:1.05rem;max-width:68ch;margin:0}
+.sbar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line)}
+.sbar i{display:block;height:100%}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;background:var(--c)}
+section.block{display:flex;flex-direction:column;gap:12px}
+section.block>h2{font-family:var(--display);font-size:1.25rem;margin:0;letter-spacing:-0.005em}
+.rows{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.row{padding:14px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px;min-width:0}
+.row-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row-top strong{font-weight:600}
+.count{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter{flex:1 1 90px;max-width:220px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent)}
+.chip{font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.chip.high,.chip.negative{background:var(--bad-soft);color:var(--bad)}
+.chip.medium,.chip.mixed{background:var(--warn-soft);color:var(--warn)}
+.chip.low,.chip.positive{background:var(--good-soft);color:var(--good)}
+.row p{margin:0;max-width:72ch}
+.quote{color:var(--muted);font-style:italic;font-size:14px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
+@media (min-width:1100px){.pair{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;margin-right:8px;vertical-align:-1px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Customer Insight Generator</h1>
+    <p>Paste reviews, survey answers, support tickets or interview notes. Get the themes, sentiment, pain points, opportunities and next steps behind them.</p>
+  </header>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="field">
+        <label for="ctx">Product or business (optional)</label>
+        <input type="text" id="ctx" placeholder="e.g. Trellis, a project planning app" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="fb">Customer feedback, one comment per line</label>
+        <textarea id="fb" spellcheck="false"></textarea>
+        <div class="meta"><span id="count">0 comments</span><span class="tag" id="sampletag">Example data</span></div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="gen" type="button" disabled>Generate with Claude</button>
+        <button id="quick" type="button">Quick scan</button>
+        <button class="quiet" id="clear" type="button">Clear</button>
+      </div>
+      <p class="note" id="status">Quick scan runs in your browser with keyword rules. Claude reads each comment and writes a fuller analysis.</p>
+    </div>
+
+    <div class="report" id="report" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var EXAMPLE = [
+    "Love the timeline view, it made our sprint planning so much easier.",
+    "Pricing jumped 40% at renewal and nobody told us. Hard to justify for a team of six.",
+    "Support took four days to answer a billing question. Really frustrating.",
+    "Onboarding was confusing. I could not figure out how to invite my team without watching a tutorial.",
+    "The mobile app is slow and crashes when I open large projects.",
+    "Great integration with Slack, saves us a lot of back and forth.",
+    "Would love an export to CSV and a proper API. Missing for our reporting.",
+    "Interface is clean and intuitive. New hires picked it up in an afternoon.",
+    "App froze twice during a client demo. Cannot rely on it for presentations.",
+    "Support agent was helpful and fixed my permissions issue in minutes. Excellent service.",
+    "The free plan is too limited, and the next tier is expensive for what it adds.",
+    "Notifications are noisy. I turned them all off and now I miss real updates.",
+    "Setup took ten minutes and importing from our old tool just worked. Impressive.",
+    "Wish there were templates for recurring projects. We rebuild the same board every month.",
+    "Search is slow once we passed a few thousand tasks."
+  ].join("\n");
+
+  var $ = function(id){return document.getElementById(id)};
+  var fb=$("fb"), ctx=$("ctx"), report=$("report"), statusEl=$("status"), genBtn=$("gen"), quickBtn=$("quick");
+  var sample=null, last=null;
+
+  function h(tag, cls, text){var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e;}
+
+  /* ---------- parsing ---------- */
+  function parse(text){
+    return text.split(/\r?\n/).map(function(l){return l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/,"").trim()}).filter(function(l){return l.length>2});
+  }
+
+  /* ---------- on-device quick scan ---------- */
+  var POS="love loved great easy easier fast helpful amazing excellent intuitive reliable good perfect smooth saved recommend happy clean best impressive works worked simple fantastic awesome useful clear friendly quick".split(" ");
+  var NEG="slow confusing expensive bug bugs crash crashes broken terrible frustrating hard difficult missing lacks poor worst cancel unhelpful waiting delay delayed error errors fails failed annoying overpriced hidden disappointed noisy froze freeze limited cannot unreliable late rude wish".split(" ");
+  var THEMES=[
+    {n:"Pricing and value",re:/pric|expensive|cost|cheap|billing|subscription|refund|discount|renewal|free plan|tier|worth/i,
+     act:"Review pricing and renewal communication. Give customers notice before price changes and spell out what each tier adds."},
+    {n:"Customer support",re:/support|agent|ticket|helpdesk|service|replied|response time|answer/i,
+     act:"Set a first-response target for support and track it weekly. Route billing questions to a faster queue."},
+    {n:"Onboarding and learning",re:/onboard|setup|set up|tutorial|getting started|learn|documentation|docs|guide|invite|import|picked it up/i,
+     act:"Add a guided first-run checklist, including a one-step team invite, and measure time to first project."},
+    {n:"Performance and reliability",re:/slow|crash|bug|lag|loading|error|outage|freez|froze|broken|reliab|fast|speed|search is/i,
+     act:"Profile the slowest screens and fix crash reports from large accounts first. Publish a reliability target."},
+    {n:"Features and integrations",re:/feature|integration|export|api|missing|lacks|wish|would love|template|slack|csv/i,
+     act:"Rank the most requested missing features by how many customers ask, then scope the top one for the next cycle."},
+    {n:"Usability and design",re:/interface|\bui\b|\bux\b|design|navigat|intuitive|layout|mobile|notification|clean|timeline|view/i,
+     act:"Run a short usability test on notifications and mobile. Add controls that let people tune what they are alerted about."},
+    {n:"Delivery and fulfilment",re:/deliver|shipping|shipped|arrived|package|tracking|parcel|courier/i,
+     act:"Audit late deliveries by carrier and add proactive tracking updates."},
+    {n:"Product quality",re:/quality|durable|defect|material|build quality|broke|faulty/i,
+     act:"Trace defect reports to batch or supplier and tighten incoming inspection."}
+  ];
+
+  function scoreText(t){
+    var w=t.toLowerCase().match(/[a-z']+/g)||[], s=0;
+    w.forEach(function(x){ if(POS.indexOf(x)>-1) s++; if(NEG.indexOf(x)>-1) s--; });
+    if(/\b(can'?t|cannot|never|not)\b/i.test(t)) s-=0.5;
+    return s;
+  }
+  function trunc(t,n){return t.length>n? t.slice(0,n-1).trimEnd()+"…" : t;}
+  function pct(a,b){return b? Math.round(a/b*100) : 0;}
+
+  function quickScan(entries){
+    var total=entries.length, pos=0, neg=0, neu=0;
+    var scored=entries.map(function(t){var s=scoreText(t); if(s>0) pos++; else if(s<0) neg++; else neu++; return {t:t,s:s};});
+    var themes=[];
+    THEMES.forEach(function(th){
+      var hits=scored.filter(function(e){return th.re.test(e.t)});
+      if(!hits.length) return;
+      var avg=hits.reduce(function(a,e){return a+e.s},0)/hits.length;
+      var sent = avg>0.3? "positive" : avg<-0.3? "negative" : "mixed";
+      var pick=hits.slice().sort(function(a,b){return Math.abs(b.s)-Math.abs(a.s)})[0];
+      var negN=hits.filter(function(e){return e.s<0}).length;
+      var insight=hits.length+" of "+total+" comments ("+pct(hits.length,total)+"%) touch on this. "+
+        (sent==="negative"? "Most of them are critical."
+         : sent==="positive"? "Most of them are favourable."
+         : negN? negN+" are critical and "+(hits.length-negN)+" are neutral or favourable." : "Opinion is neutral.");
+      themes.push({name:th.n,mentions:hits.length,sentiment:sent,insight:insight,quote:trunc(pick.t,170),_act:th.act,_neg:negN,_avg:avg});
+    });
+    themes.sort(function(a,b){return b.mentions-a.mentions});
+
+    var pains=themes.filter(function(t){return t._neg>0 && t._avg<=0.3}).sort(function(a,b){return b._neg-a._neg}).slice(0,4).map(function(t){
+      var share=pct(t._neg,total);
+      return {title:t.name+" frustrates customers",severity: share>=20?"high": share>=10?"medium":"low",evidence:t._neg+" critical comment"+(t._neg>1?"s":"")+" ("+share+"% of feedback). Example: “"+t.quote+"”"};
+    });
+    var opps=[];
+    themes.filter(function(t){return t.sentiment==="positive"}).slice(0,2).forEach(function(t){
+      opps.push({title:"Build on "+t.name.toLowerCase(),rationale:"Customers already praise this. Feature it in onboarding and marketing, and protect it as the product changes."});
+    });
+    var wishes=scored.filter(function(e){return /wish|would love|would like|missing|lacks|need a|please add/i.test(e.t)});
+    wishes.slice(0,3).forEach(function(e){opps.push({title:"Unmet request",rationale:"“"+trunc(e.t,150)+"”"});});
+    if(!opps.length) opps.push({title:"Collect more feedback",rationale:"No clear praise or requests stand out yet. A larger sample will sharpen the picture."});
+
+    var acts=themes.filter(function(t){return t._neg>0}).sort(function(a,b){return b._neg-a._neg}).slice(0,4).map(function(t,i){
+      return {action:t._act,impact: i<2?"high":"medium",effort: /Pricing|Support/.test(t.name)?"low":"medium"};
+    });
+    if(!acts.length) acts.push({action:"Keep collecting feedback and re-run this analysis monthly to catch changes early.",impact:"medium",effort:"low"});
+
+    var top=themes[0];
+    var summary="Across "+total+" comments, "+pct(pos,total)+"% are positive and "+pct(neg,total)+"% negative."+
+      (top? " The most discussed topic is "+top.name.toLowerCase()+"." : "")+
+      (pains.length? " The biggest sources of friction are "+pains.slice(0,2).map(function(p){return p.title.replace(" frustrates customers","").toLowerCase()}).join(" and ")+"." : "");
+    return {summary:summary,sentiment:{positive:pos,neutral:neu,negative:neg},themes:themes,pain_points:pains,opportunities:opps,actions:acts};
+  }
+
+  /* ---------- Claude analysis ---------- */
+  function buildPrompt(entries, product){
+    var body=entries.map(function(e,i){return (i+1)+". "+e}).join("\n");
+    if(body.length>14000) body=body.slice(0,14000);
+    return "You are a customer research analyst. Analyse the customer feedback below"+(product? " for: "+product : "")+".\n"+
+      "Return ONLY JSON with this exact shape:\n"+
+      '{"summary":"2-3 sentences, plain language","sentiment":{"positive":n,"neutral":n,"negative":n},'+
+      '"themes":[{"name":"","mentions":n,"sentiment":"positive|mixed|negative","insight":"one sentence on what customers are really saying and why","quote":"short verbatim quote from the feedback"}],'+
+      '"pain_points":[{"title":"","severity":"high|medium|low","evidence":"specific evidence from the comments"}],'+
+      '"opportunities":[{"title":"","rationale":""}],'+
+      '"actions":[{"action":"specific next step","impact":"high|medium|low","effort":"high|medium|low"}]}\n'+
+      "Rules: sentiment counts must add up to the number of comments ("+entries.length+"). 3-7 themes ordered by mentions. 2-5 pain points, 2-4 opportunities, 3-5 actions ordered by impact. Quotes must be copied from the feedback. Do not invent facts that the comments do not support.\n\nFEEDBACK:\n"+body;
+  }
+  function oneOf(v,list,d){v=String(v||"").toLowerCase(); return list.indexOf(v)>-1? v : d;}
+  function normalize(r,total){
+    var s=r.sentiment||{};
+    var out={summary:String(r.summary||""),
+      sentiment:{positive:+s.positive||0,neutral:+s.neutral||0,negative:+s.negative||0},
+      themes:(r.themes||[]).map(function(t){return {name:String(t.name||"Theme"),mentions:+t.mentions||0,sentiment:oneOf(t.sentiment,["positive","mixed","negative"],"mixed"),insight:String(t.insight||""),quote:String(t.quote||"")}}),
+      pain_points:(r.pain_points||[]).map(function(p){return {title:String(p.title||""),severity:oneOf(p.severity,["high","medium","low"],"medium"),evidence:String(p.evidence||"")}}),
+      opportunities:(r.opportunities||[]).map(function(o){return {title:String(o.title||""),rationale:String(o.rationale||"")}}),
+      actions:(r.actions||[]).map(function(a){return {action:String(a.action||""),impact:oneOf(a.impact,["high","medium","low"],"medium"),effort:oneOf(a.effort,["high","medium","low"],"medium")}})};
+    if(!(out.sentiment.positive+out.sentiment.neutral+out.sentiment.negative)) out.sentiment.neutral=total;
+    return out;
+  }
+
+  /* ---------- rendering ---------- */
+  function chip(text,cls){return h("span","chip "+cls,text);}
+  function block(title){var s=h("section","block"); s.appendChild(h("h2",null,title)); return s;}
+
+  function render(r, engine, total){
+    last={r:r,engine:engine,total:total};
+    report.textContent="";
+    var sTotal=r.sentiment.positive+r.sentiment.neutral+r.sentiment.negative||1;
+
+    var head=h("div","report-head");
+    head.appendChild(h("span","eyebrow","Findings"));
+    var right=h("div","actions");
+    right.appendChild(h("span","engine","Analysis: "+engine));
+    var copy=h("button","quiet","Copy as text"); copy.type="button"; copy.addEventListener("click",function(){copyReport(copy)});
+    right.appendChild(copy);
+    head.appendChild(right);
+    report.appendChild(head);
+
+    var topTheme=r.themes[0]? r.themes[0].name : "None";
+    var strip=h("div","strip");
+    [[String(total),"comments analysed"],[pct(r.sentiment.positive,sTotal)+"%","positive"],[pct(r.sentiment.negative,sTotal)+"%","negative"],[topTheme,"top theme"]].forEach(function(p){
+      var d=h("div"); d.appendChild(h("b",null,p[0])); d.appendChild(h("span",null,p[1])); strip.appendChild(d);
+    });
+    report.appendChild(strip);
+
+    var sum=h("div"); sum.appendChild(h("p","summary",r.summary));
+    var bar=h("div","sbar"); bar.setAttribute("role","img");
+    bar.setAttribute("aria-label","Sentiment: "+r.sentiment.positive+" positive, "+r.sentiment.neutral+" neutral, "+r.sentiment.negative+" negative");
+    [["positive","--good"],["neutral","--neutral"],["negative","--bad"]].forEach(function(k){
+      var i=h("i"); i.style.width=(r.sentiment[k[0]]/sTotal*100)+"%"; i.style.background="var("+k[1]+")"; bar.appendChild(i);
+    });
+    var lg=h("div","legend");
+    [["positive","--good"],["neutral","--neutral"],["negative","--bad"]].forEach(function(k){
+      var s=h("span",null,r.sentiment[k[0]]+" "+k[0]); s.style.setProperty("--c","var("+k[1]+")"); lg.appendChild(s);
+    });
+    var wrapS=h("div"); wrapS.style.marginTop="16px"; wrapS.appendChild(bar); wrapS.appendChild(lg);
+    sum.appendChild(wrapS); report.appendChild(sum);
+
+    /* themes */
+    var tb=block("Themes"); var rows=h("div","rows"); var max=Math.max.apply(null,r.themes.map(function(t){return t.mentions}).concat([1]));
+    r.themes.forEach(function(t){
+      var row=h("div","row"), top=h("div","row-top");
+      top.appendChild(h("strong",null,t.name));
+      var m=h("span","meter"); var i=h("i"); i.style.width=(t.mentions/max*100)+"%"; m.appendChild(i); top.appendChild(m);
+      top.appendChild(h("span","count",t.mentions+" mention"+(t.mentions===1?"":"s")));
+      top.appendChild(chip(t.sentiment,t.sentiment));
+      row.appendChild(top);
+      if(t.insight) row.appendChild(h("p",null,t.insight));
+      if(t.quote) row.appendChild(h("p","quote","“"+t.quote.replace(/^[“"]|[”"]$/g,"")+"”"));
+      rows.appendChild(row);
+    });
+    if(!r.themes.length) rows.appendChild(h("div","row")).appendChild(h("p",null,"No clear themes found. Try adding more comments."));
+    tb.appendChild(rows); report.appendChild(tb);
+
+    var pair=h("div","pair");
+    var pb=block("Pain points"), prow=h("div","rows");
+    r.pain_points.forEach(function(p){
+      var row=h("div","row"), top=h("div","row-top");
+      top.appendChild(h("strong",null,p.title)); top.appendChild(chip(p.severity+" severity",p.severity)); row.appendChild(top);
+      row.appendChild(h("p",null,p.evidence)); prow.appendChild(row);
+    });
+    if(!r.pain_points.length) prow.appendChild(h("div","row")).appendChild(h("p",null,"No pain points stand out."));
+    pb.appendChild(prow); pair.appendChild(pb);
+
+    var ob=block("Opportunities"), orow=h("div","rows");
+    r.opportunities.forEach(function(o){
+      var row=h("div","row"); row.appendChild(h("strong",null,o.title)); row.appendChild(h("p",null,o.rationale)); orow.appendChild(row);
+    });
+    ob.appendChild(orow); pair.appendChild(ob);
+    report.appendChild(pair);
+
+    var ab=block("Recommended actions"), arow=h("div","rows");
+    var rank={high:0,medium:1,low:2};
+    r.actions.slice().sort(function(a,b){return rank[a.impact]-rank[b.impact]}).forEach(function(a){
+      var row=h("div","row"), top=h("div","row-top");
+      top.appendChild(chip("impact: "+a.impact, a.impact==="high"?"positive":a.impact==="medium"?"mixed":"low"));
+      top.appendChild(h("span","count","effort: "+a.effort)); row.appendChild(top);
+      row.appendChild(h("p",null,a.action)); arow.appendChild(row);
+    });
+    ab.appendChild(arow); report.appendChild(ab);
+  }
+
+  function toText(){
+    if(!last) return "";
+    var r=last.r, L=[];
+    L.push("CUSTOMER INSIGHTS ("+last.total+" comments)","", r.summary,"");
+    L.push("Sentiment: "+r.sentiment.positive+" positive, "+r.sentiment.neutral+" neutral, "+r.sentiment.negative+" negative","");
+    L.push("THEMES"); r.themes.forEach(function(t){L.push("- "+t.name+" ("+t.mentions+", "+t.sentiment+"): "+t.insight)});
+    L.push("","PAIN POINTS"); r.pain_points.forEach(function(p){L.push("- ["+p.severity+"] "+p.title+": "+p.evidence)});
+    L.push("","OPPORTUNITIES"); r.opportunities.forEach(function(o){L.push("- "+o.title+": "+o.rationale)});
+    L.push("","RECOMMENDED ACTIONS"); r.actions.forEach(function(a){L.push("- (impact "+a.impact+", effort "+a.effort+") "+a.action)});
+    return L.join("\n");
+  }
+  function copyReport(btn){
+    var txt=toText(), old=btn.textContent;
+    function done(m){btn.textContent=m; setTimeout(function(){btn.textContent=old},1600);}
+    function fallback(){
+      var ta=h("textarea"); ta.value=txt; ta.style.cssText="position:fixed;left:-9999px;min-height:0"; document.body.appendChild(ta); ta.select();
+      var ok=false; try{ok=document.execCommand("copy")}catch(e){} document.body.removeChild(ta); done(ok?"Copied":"Copy failed");
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){done("Copied")},fallback);} else fallback();
+  }
+
+  /* ---------- wiring ---------- */
+  function updateCount(){
+    var n=parse(fb.value).length; $("count").textContent=n+(n===1?" comment":" comments");
+    $("sampletag").hidden = fb.value!==EXAMPLE;
+  }
+  function setStatus(msg,err){statusEl.textContent=msg; statusEl.className="note"+(err?" err":"");}
+
+  function runQuick(){
+    var e=parse(fb.value);
+    if(!e.length){setStatus("Add at least one comment first.",true); return;}
+    render(quickScan(e),"quick scan (on-device)",e.length);
+    setStatus("Quick scan uses keyword rules. Use Claude for deeper reading of tone and context.");
+  }
+
+  async function runClaude(){
+    var e=parse(fb.value);
+    if(!e.length){setStatus("Add at least one comment first.",true); return;}
+    if(!sample){runQuick(); return;}
+    genBtn.disabled=true; quickBtn.disabled=true;
+    var old=genBtn.textContent; genBtn.textContent=""; var sp=h("span","spinner"); genBtn.appendChild(sp); genBtn.appendChild(document.createTextNode("Reading feedback"));
+    setStatus("Claude is reading "+e.length+" comments. This can take up to a minute.");
+    try{
+      var res=await sample.json(buildPrompt(e,ctx.value.trim()),{cache:false,modelTier:"default"});
+      render(normalize(res,e.length),"Claude",e.length);
+      setStatus("Done. Edit the comments and run again to compare.");
+    }catch(err){
+      var code=err&&err.code;
+      render(quickScan(e),"quick scan (on-device)",e.length);
+      setStatus(code==="not_granted"? "Claude access was declined, so a quick scan is shown instead."
+        : code==="rate_limited"? "Claude is rate limited right now, so a quick scan is shown. Try again shortly."
+        : "Claude could not complete the analysis, so a quick scan is shown instead.", true);
+    }finally{
+      genBtn.textContent=old; genBtn.disabled=false; quickBtn.disabled=false;
+    }
+  }
+
+  fb.value=EXAMPLE; ctx.value="Trellis, a project planning app";
+  fb.addEventListener("input",updateCount);
+  quickBtn.addEventListener("click",runQuick);
+  genBtn.addEventListener("click",runClaude);
+  $("clear").addEventListener("click",function(){fb.value=""; updateCount(); report.textContent=""; last=null; setStatus("Paste comments, one per line, then run an analysis."); fb.focus();});
+  updateCount(); runQuick();
+  setStatus("Example feedback is loaded. Replace it with your own, then run an analysis.");
+
+  (async function(){
+    try{ sample = window.claude ? await window.claude.use("sample") : null; }catch(e){ sample=null; }
+    if(sample){ genBtn.disabled=false; } else { genBtn.hidden=true; }
+  })();
+})();
+</script>
+
+</body></html>
